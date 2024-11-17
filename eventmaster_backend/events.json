@@ -1,0 +1,20 @@
+[
+    {
+        "model": "your_app_name.event",
+        "pk": 1,
+        "fields": {
+            "name": "Annual Tech Conference",
+            "date": "2024-11-15",
+            "description": "A conference covering the latest in technology."
+        }
+    },
+    {
+        "model": "your_app_name.event",
+        "pk": 2,
+        "fields": {
+            "name": "Summer Music Festival",
+            "date": "2025-06-20",
+            "description": "A festival featuring live music and entertainment."
+        }
+    }
+]

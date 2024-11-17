@@ -1,0 +1,24 @@
+[
+    {
+        "model": "your_app_name.component",
+        "pk": 1,
+        "fields": {
+            "name": "Stage Lighting",
+            "type": "Equipment",
+            "quantity": 5,
+            "notes": "Lighting for the main stage.",
+            "sub_event": 1
+        }
+    },
+    {
+        "model": "your_app_name.component",
+        "pk": 2,
+        "fields": {
+            "name": "Projector",
+            "type": "Equipment",
+            "quantity": 1,
+            "notes": "High-resolution projector for presentations.",
+            "sub_event": 2
+        }
+    }
+]

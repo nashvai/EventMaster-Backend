@@ -1,0 +1,32 @@
+[
+    {
+        "model": "your_app_name.subevent",
+        "pk": 1,
+        "fields": {
+            "title": "Keynote Speech",
+            "date": "2024-11-15T09:00:00Z",
+            "description": "Opening speech by the CEO.",
+            "event": 1
+        }
+    },
+    {
+        "model": "your_app_name.subevent",
+        "pk": 2,
+        "fields": {
+            "title": "Workshop: AI and Machine Learning",
+            "date": "2024-11-15T13:00:00Z",
+            "description": "Interactive workshop on AI.",
+            "event": 1
+        }
+    },
+    {
+        "model": "your_app_name.subevent",
+        "pk": 3,
+        "fields": {
+            "title": "Main Stage Performance",
+            "date": "2025-06-20T18:00:00Z",
+            "description": "Live performance by popular band.",
+            "event": 2
+        }
+    }
+]
