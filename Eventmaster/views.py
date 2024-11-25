@@ -1,4 +1,4 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsOrganizerOrAdmin 
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
@@ -106,14 +106,19 @@ class ComponentViewSet(viewsets.ModelViewSet):
 class RegisterUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-
+    permission_classes = [AllowAny]
     def create(self, request, *args, **kwargs):
         # Get the role from the request data, default to 'Event Organizer'
         role = request.data.get('role', 'organizer')  # Default is 'organizer' if not specified
         
         if role not in dict(CustomUser.ROLE_CHOICES).keys():
-            return Response({"error": "Invalid role specified."}, status=400)
+            return Response({"error": "Invalid role specified."}, status=status.HTTP_400_BAD_REQUEST)
 
         data = request.data
         data['role'] = role
-        return super().create(request, *args, **kwargs)
+          # Make sure to validate the data using the serializer
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            return super().create(request, *args, **kwargs)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,6 +1,5 @@
 from rest_framework_nested import routers
 from .views import EventViewSet, SubEventViewSet, ComponentViewSet
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import EventViewSet, SubEventViewSet, ComponentViewSet
 
 # Set up the base router

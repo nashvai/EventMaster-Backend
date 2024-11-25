@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser, Group
+from django.contrib.auth.models import AbstractUser
 
 class Event(models.Model):
     name = models.CharField(max_length=255)
@@ -35,5 +35,6 @@ class CustomUser(AbstractUser):
         ('admin', 'Administrator'),
     )
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='unregistered')
+
     def __str__(self):
         return self.username
