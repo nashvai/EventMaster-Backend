@@ -1,3 +1,7 @@
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -7,6 +11,8 @@ from .serializers import EventSerializer, SubEventSerializer, ComponentSerialize
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]  # Restrict access to authenticated users
 
     def update(self, request, *args, **kwargs):
         required_fields = ['name', 'date', 'description']
@@ -27,6 +33,8 @@ class EventViewSet(viewsets.ModelViewSet):
 
 class SubEventViewSet(viewsets.ModelViewSet):
     queryset = SubEvent.objects.all()
+    serializer_class = SubEventSerializer
+    authentication_classes = [JWTAuthentication]
     serializer_class = SubEventSerializer
 
     def get_queryset(self):
@@ -64,6 +72,8 @@ class SubEventViewSet(viewsets.ModelViewSet):
 
 class ComponentViewSet(viewsets.ModelViewSet):
     queryset = Component.objects.all()
+    serializer_class = ComponentSerializer
+    authentication_classes = [JWTAuthentication]
     serializer_class = ComponentSerializer
 
     def get_queryset(self):
