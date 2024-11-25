@@ -1,18 +1,17 @@
 from rest_framework.permissions import IsAuthenticated
+from .permissions import IsOrganizerOrAdmin 
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
-from .models import Event, SubEvent, Component
-from .serializers import EventSerializer, SubEventSerializer, ComponentSerializer
+from .models import Event, SubEvent, Component,CustomUser
+from .serializers import EventSerializer, SubEventSerializer, ComponentSerializer, UserSerializer
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]  # Restrict access to authenticated users
+    permission_classes = [IsAuthenticated,IsOrganizerOrAdmin]  # Restrict access to authenticated users
 
     def update(self, request, *args, **kwargs):
         required_fields = ['name', 'date', 'description']
@@ -103,3 +102,18 @@ class ComponentViewSet(viewsets.ModelViewSet):
             return super().update(request, *args, **kwargs)
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class RegisterUserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        # Get the role from the request data, default to 'Event Organizer'
+        role = request.data.get('role', 'organizer')  # Default is 'organizer' if not specified
+        
+        if role not in dict(CustomUser.ROLE_CHOICES).keys():
+            return Response({"error": "Invalid role specified."}, status=400)
+
+        data = request.data
+        data['role'] = role
+        return super().create(request, *args, **kwargs)

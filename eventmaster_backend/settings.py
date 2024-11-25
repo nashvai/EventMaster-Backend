@@ -45,7 +45,7 @@ INSTALLED_APPS = [
 
 ]
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Set the access token expiration
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Set the access token expiration
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # Set the refresh token expiration
     'ROTATE_REFRESH_TOKENS': False,  # If you want refresh tokens to be rotated after use
     'ALGORITHM': 'HS256',  # Algorithm used to sign tokens
@@ -72,6 +72,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+AUTH_USER_MODEL = 'Eventmaster.CustomUser'
 
 CORS_ORIGIN_ALLOW_ALL = True
 ROOT_URLCONF = "eventmaster_backend.urls"
