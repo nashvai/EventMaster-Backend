@@ -1,18 +1,26 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsEventOrganizer,IsAdminUser,IsUnregisteredUser
-#from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import viewsets, status
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from .models import Event, SubEvent, Component,CustomUser
 from .serializers import EventSerializer, SubEventSerializer, ComponentSerializer, UserSerializer
 
+User = get_user_model()  # Get the custom user model
+
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
-    #authentication_classes = [JWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated,IsUnregisteredUser]  # Restrict access to authenticated users
+    
+    def perform_create(self, serializer):
+        # Set the created_by field to the current user
+        serializer.save(created_by=self.request.user)
+
     def get_permissions(self):
        # If authenticated, check the user's role
         if self.request.user.is_authenticated:
@@ -27,7 +35,15 @@ class EventViewSet(viewsets.ModelViewSet):
         # Admin can access all events; organizers only their own
         if self.request.user.role == 'admin':
             return Event.objects.all()
-        return Event.objects.filter(created_by=self.request.user)  # Organizer-specific
+        # For non-admin users, use created_by filter
+        queryset = Event.objects.filter(created_by=self.request.user)
+        
+        # Fall back to a default user if no created_by is set (for pre-existing events)
+        if not queryset.exists():
+            default_user = User.objects.get(username='AdminNa')  # Or assign any other user
+            queryset = Event.objects.filter(created_by=default_user)
+        
+        return queryset
     
     def update(self, request, *args, **kwargs):
         required_fields = ['name', 'date', 'description']
@@ -49,8 +65,12 @@ class EventViewSet(viewsets.ModelViewSet):
 class SubEventViewSet(viewsets.ModelViewSet):
     queryset = SubEvent.objects.all()
     serializer_class = SubEventSerializer
-    #authentication_classes = [JWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated,IsUnregisteredUser]
+    
+    def perform_create(self, serializer):
+        # Set the created_by field to the current user
+        serializer.save(created_by=self.request.user)
 
     def get_permissions(self):
       # If authenticated, check the user's role
@@ -63,20 +83,20 @@ class SubEventViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        # Admin can access all sub-events; organizers only within their events
-        # Apply role-based filtering
-        if self.request.user.role == 'admin':
-            queryset = Event.objects.all()
-        else:  # Organizer
-            queryset = Event.objects.filter(created_by=self.request.user)
-
-        # Add any additional filters (e.g., query params for specific events)
-        event_id = self.request.query_params.get('event_pk')
-        if event_id:
-            queryset = queryset.filter(id=event_id)
-
-        return queryset
+        # Get the event ID from the URL
+        event_id = self.kwargs.get('event_pk')  # Ensure this matches your URL routing
         
+        # Fetch the sub-events related to the specified event
+        queryset = SubEvent.objects.filter(event_id=event_id)
+
+        # If the user is an admin, return all sub-events for the specified event
+        if self.request.user.role == 'admin':
+            return queryset  # Admin can access all sub-events
+
+        # For organizers, filter by created_by
+        return queryset.filter(created_by=self.request.user)
+      
+      
 
     def update(self, request, *args, **kwargs):
         required_fields = ['title', 'date', 'description', 'event']
@@ -101,13 +121,17 @@ class SubEventViewSet(viewsets.ModelViewSet):
             return super().update(request, *args, **kwargs)
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        
 
 class ComponentViewSet(viewsets.ModelViewSet):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     permission_classes = [IsAuthenticated,IsUnregisteredUser]
+    authentication_classes = [JWTAuthentication]
 
+    def perform_create(self, serializer):
+        # Set the created_by field to the current user
+        serializer.save(created_by=self.request.user)
     def get_permissions(self):
        # If authenticated, check the user's role
         if self.request.user.is_authenticated:
@@ -119,11 +143,17 @@ class ComponentViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        # Admins can access all components; organizers only their sub-events
+        # Admins can access all components
         if self.request.user.role == 'admin':
             return Component.objects.all()
-        else:  # Organizer
-            queryset = Component.objects.filter(sub_event__event__created_by=self.request.user)
+        
+        # For organizers, filter components by their sub-events
+        queryset = Component.objects.filter(sub_event__event__created_by=self.request.user)
+
+        # Fall back to a default user if no created_by is set (for pre-existing components)
+        if not queryset.exists():
+            default_user = User.objects.get(username='AdminNa')  # Replace with actual default user if necessary
+            queryset = Component.objects.filter(sub_event__event__created_by=default_user)
 
         # Additional filters (e.g., by sub-event ID)
         sub_event_id = self.request.query_params.get('sub_event_pk')
@@ -165,10 +195,14 @@ class RegisterUserViewSet(viewsets.ModelViewSet):
         # Use the provided serializer, which now handles default role assignment
         serializer = self.get_serializer(data=request.data)
         
+       
         # Validate and save the new user
         if serializer.is_valid():
             user = serializer.save()
-
+         # Default role assignment if not provided
+            if not user.role:
+              user.role = 'organizer'  # Default role
+              user.save()
             # The group assignment is handled by the serializer's create method
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:

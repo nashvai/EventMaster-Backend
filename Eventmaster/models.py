@@ -1,10 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 
 class Event(models.Model):
     name = models.CharField(max_length=255)
     date = models.DateField()
     description = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='events_created', on_delete=models.CASCADE,default=1)
 
     def __str__(self):
         return self.name
@@ -14,6 +16,8 @@ class SubEvent(models.Model):
     title = models.CharField(max_length=255)
     date = models.DateTimeField()
     description = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='subevents_created', on_delete=models.CASCADE,default=1)
+
 
     def __str__(self):
         return self.title
@@ -24,6 +28,12 @@ class Component(models.Model):
     type = models.CharField(max_length=100)  # For categorizing, e.g., seating, AV, catering
     quantity = models.IntegerField()  # Quantity of items or units for this component
     notes = models.TextField(blank=True, null=True)  # Optional additional details
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        related_name='components_created', 
+        on_delete=models.CASCADE,
+        default=1  # Use the ID of an existing user, for example, ID 1 for admin
+    )
 
     def __str__(self):
         return f"{self.name} ({self.type})"

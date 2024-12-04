@@ -73,7 +73,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-#AUTH_USER_MODEL = "Eventmaster.CustomUser"
+AUTH_USER_MODEL = "Eventmaster.CustomUser"
 
 CORS_ORIGIN_ALLOW_ALL = True
 ROOT_URLCONF = "eventmaster_backend.urls"
