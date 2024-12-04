@@ -34,7 +34,7 @@ class CustomUser(AbstractUser):
         ('organizer', 'Event Organizer'),
         ('admin', 'Administrator'),
     )
-    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='unregistered')
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='organizer')
 
     # Add related_name to avoid clashes with the default User model's groups and user_permissions
     groups = models.ManyToManyField(

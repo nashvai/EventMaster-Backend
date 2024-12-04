@@ -25,16 +25,25 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['username', 'password', 'email', 'first_name', 'last_name', 'role']
 
+
     def create(self, validated_data):
+        # Ensure the role is always 'organizer' for registration
+        validated_data['role'] = validated_data.get('role', 'organizer')  # Default to 'organizer'
+
+        # Create the user
         user = CustomUser.objects.create_user(
             username=validated_data['username'],
-            email=validated_data['email'],
             password=validated_data['password'],
+            email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
+            role=validated_data['role'],  # Set role to 'organizer' or as provided
         )
-        # Assign the role based on input (e.g. 'admin' or 'organizer')
-        role = validated_data.get('role', 'Event Organizer')
-        group = Group.objects.get(name=role)
+        
+        # Ensure the 'Event Organizer' group exists
+        group, created = Group.objects.get_or_create(name='Event Organizer')
+        
+        # Add the user to the 'Event Organizer' group
         user.groups.add(group)
+        
         return user

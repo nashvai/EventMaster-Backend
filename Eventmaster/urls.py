@@ -1,6 +1,6 @@
 from rest_framework_nested import routers
 from .views import EventViewSet, SubEventViewSet, ComponentViewSet
-from .views import EventViewSet, SubEventViewSet, ComponentViewSet
+
 
 # Set up the base router
 router = routers.DefaultRouter()

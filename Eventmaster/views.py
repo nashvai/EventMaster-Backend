@@ -1,9 +1,10 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
-#from .permissions import IsOrganizerOrAdmin 
+from .permissions import IsEventOrganizer,IsAdminUser,IsUnregisteredUser
 #from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import viewsets, status
+from django.contrib.auth.models import Group
 from .models import Event, SubEvent, Component,CustomUser
 from .serializers import EventSerializer, SubEventSerializer, ComponentSerializer, UserSerializer
 
@@ -11,8 +12,23 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     #authentication_classes = [JWTAuthentication]
-    #permission_classes = [IsAuthenticated,IsOrganizerOrAdmin]  # Restrict access to authenticated users
+    permission_classes = [IsAuthenticated,IsUnregisteredUser]  # Restrict access to authenticated users
+    def get_permissions(self):
+       # If authenticated, check the user's role
+        if self.request.user.is_authenticated:
+            if self.request.user.role == 'admin':
+                return [IsAdminUser()]
+            elif self.request.user.role == 'organizer':
+                return [IsEventOrganizer()]
+        # Return the super permissions (for IsUnregisteredUser and IsAuthenticated)
+        return super().get_permissions()
 
+    def get_queryset(self):
+        # Admin can access all events; organizers only their own
+        if self.request.user.role == 'admin':
+            return Event.objects.all()
+        return Event.objects.filter(created_by=self.request.user)  # Organizer-specific
+    
     def update(self, request, *args, **kwargs):
         required_fields = ['name', 'date', 'description']
         missing_fields = [field for field in required_fields if field not in request.data]
@@ -34,12 +50,32 @@ class SubEventViewSet(viewsets.ModelViewSet):
     queryset = SubEvent.objects.all()
     serializer_class = SubEventSerializer
     #authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated,IsUnregisteredUser]
 
+    def get_permissions(self):
+      # If authenticated, check the user's role
+        if self.request.user.is_authenticated:
+            if self.request.user.role == 'admin':
+                return [IsAdminUser()]
+            elif self.request.user.role == 'organizer':
+                return [IsEventOrganizer()]
+        # Return the super permissions (for IsUnregisteredUser and IsAuthenticated)
+        return super().get_permissions()
 
     def get_queryset(self):
-        event_id = self.kwargs.get('event_pk')  # Use 'event_pk' to match the nested router
+        # Admin can access all sub-events; organizers only within their events
+        # Apply role-based filtering
+        if self.request.user.role == 'admin':
+            queryset = Event.objects.all()
+        else:  # Organizer
+            queryset = Event.objects.filter(created_by=self.request.user)
+
+        # Add any additional filters (e.g., query params for specific events)
+        event_id = self.request.query_params.get('event_pk')
         if event_id:
-            return SubEvent.objects.filter(event_id=event_id)
+            queryset = queryset.filter(id=event_id)
+
+        return queryset
         
 
     def update(self, request, *args, **kwargs):
@@ -70,12 +106,31 @@ class SubEventViewSet(viewsets.ModelViewSet):
 class ComponentViewSet(viewsets.ModelViewSet):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
-    #authentication_classes = [JWTAuthentication]
-    
+    permission_classes = [IsAuthenticated,IsUnregisteredUser]
+
+    def get_permissions(self):
+       # If authenticated, check the user's role
+        if self.request.user.is_authenticated:
+            if self.request.user.role == 'admin':
+                return [IsAdminUser()]
+            elif self.request.user.role == 'organizer':
+                return [IsEventOrganizer()]
+        # Return the super permissions (for IsUnregisteredUser and IsAuthenticated)
+        return super().get_permissions()
 
     def get_queryset(self):
-        sub_event_id = self.kwargs['sub_event_pk']
-        return Component.objects.filter(sub_event_id=sub_event_id)
+        # Admins can access all components; organizers only their sub-events
+        if self.request.user.role == 'admin':
+            return Component.objects.all()
+        else:  # Organizer
+            queryset = Component.objects.filter(sub_event__event__created_by=self.request.user)
+
+        # Additional filters (e.g., by sub-event ID)
+        sub_event_id = self.request.query_params.get('sub_event_pk')
+        if sub_event_id:
+            queryset = queryset.filter(sub_event_id=sub_event_id)
+
+        return queryset
 
     def update(self, request, *args, **kwargs):
         required_fields = ['name', 'type', 'quantity', 'notes', 'sub_event']
@@ -100,23 +155,21 @@ class ComponentViewSet(viewsets.ModelViewSet):
             return super().update(request, *args, **kwargs)
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        
 class RegisterUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
-    def create(self, request, *args, **kwargs):
-        # Get the role from the request data, default to 'Event Organizer'
-        role = request.data.get('role', 'organizer')  # Default is 'organizer' if not specified
-        
-        if role not in dict(CustomUser.ROLE_CHOICES).keys():
-            return Response({"error": "Invalid role specified."}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = request.data
-        data['role'] = role
-          # Make sure to validate the data using the serializer
-        serializer = self.get_serializer(data=data)
+    def create(self, request, *args, **kwargs):
+        # Use the provided serializer, which now handles default role assignment
+        serializer = self.get_serializer(data=request.data)
+        
+        # Validate and save the new user
         if serializer.is_valid():
-            return super().create(request, *args, **kwargs)
+            user = serializer.save()
+
+            # The group assignment is handled by the serializer's create method
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
